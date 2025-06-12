@@ -32,7 +32,7 @@ jobs:
         uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
         with:
-          command: buildozer --log-level 2 android debug
+          command: buildozer -v android debug
           buildozer_version: stable
 
       - name: Upload APK
