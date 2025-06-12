@@ -1,67 +1,81 @@
 [app]
 
 # (str) Title of your application
-title = Blockly
+title = Blocly
 
 # (str) Package name
-package.name = Blockly
+package.name = blockly
 
-# (str) Package domain (used for the package namespace)
+# (str) Package domain (reverse DNS)
 package.domain = com.petkodev.blockly
 
-# (str) Source code directory
+# (str) Source code where the main.py lives
 source.dir = .
 
-# (str) List of allowed extensions to include (separated by comma)
-source.include_exts = py,png,kv,atlas
+# (list) Source files to include (let Buildozer detect)
+source.include_exts = py,png,kv,atlas,jpg,jpeg,ttf,otf,xml
 
-# (str) Application versioning
-version = 1.0
+# (list) Application requirements
+# Include kivy and dependencies used for your game
+requirements = python3,kivy
 
-# (str) Requirements for the app, separated by comma
-requirements = kivy==2.1.0,requests
+# (str) Supported architectures
+android.arch = armeabi-v7a, arm64-v8a
 
-# (str) Icon file for the app
+# (str) Presplash image (splash screen)
+presplash.filename = %(source.dir)s/data/presplash.png
+
+# (str) Icon of the app
 icon.filename = Blockly.png
 
-# (str) Screen orientation ('portrait', 'landscape' or 'all')
+# (str) Orientation (portrait, landscape or all)
 orientation = portrait
 
-# (int) Fullscreen mode (1 = yes, 0 = no)
+# (bool) Indicate if the application should be fullscreen or not
 fullscreen = 1
 
-# (str) Permissions required by the app (comma separated)
-android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, VIBRATE
+# (list) Permissions your app needs
+android.permissions = INTERNET
 
-# (str) The entry point filename (your main Python file)
+# (bool) Copy libs inside APK instead of using system installed ones
+android.copy_libs = 1
+
+# (bool) Use SDL2 windowing backend (recommended)
+android.use_sdl2 = 1
+
+# (int) Android API level (numeric)
+android.api = 33
+
+# (int) Minimum API your app supports
+android.minapi = 21
+
+# (int) Target API your app supports
+android.sdk = 33
+
+# (str) Android NDK version to use (automatic default)
+# android.ndk = 25b
+
+# (bool) Enable Android logcat (debugging)
+log_level = 2
+
+# (bool) Sign your APK automatically (for release, requires keystore)
+# android.release = 0
+
+# (str) Entry point of app (default 'main.py' with 'app' class)
+# You can leave as default if your main file is 'main.py'
 entrypoint = main.py
-
-# (int) Hide the Android status bar (1 = yes, 0 = no)
-android.hide_statusbar = 1
-
-# (str) Presplash image shown while loading app
-android.presplash = Blockly.png
-
-# (int) Minimum Android API level
-android.api = 30
-
-# (str) Android NDK version
-android.ndk = 25b
-
-# (int) Android SDK version
-android.sdk = 26
-
-# (str) Package format to use ('gradle' recommended)
-android.packaging = gradle
-
-# (str) Supported Android CPU architectures (comma separated)
-android.archs = arm64-v8a, armeabi-v7a
 
 
 [buildozer]
 
-# (int) Log level (0=debug, 1=info, 2=warning, 3=error, 4=critical)
+# (str) Path to build artifact cache (default .buildozer)
+build_dir = .buildozer
+
+# (list) Buildozer commands to run before compilation
+# For cleaning before new build use: clean
+
+# (str) Log level (0=debug, 1=info, 2=warning)
 log_level = 2
 
-# (int) Warn if running as root user (1=yes, 0=no)
-warn_on_root = 1
+# (int) Number of concurrent build jobs
+num_jobs = 4
