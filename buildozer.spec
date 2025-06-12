@@ -6,13 +6,13 @@ package.domain = com.petkodev.blockly
 source.dir = .
 source.include_exts = py,png,kv,atlas
 version = 1.0
-requirements = python3,kivy
+requirements = python3,kivy==2.1.0,requests
 icon.filename = Blockly.png
 orientation = portrait
 fullscreen = 1
 
 # Uncomment if your app uses Android permissions (camera, internet, etc.)
-android.permissions = INTERNET
+android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE
 
 # Entry point for your app
 entrypoint = main.py
@@ -24,8 +24,9 @@ android.hide_statusbar = 1
 android.presplash = Blockly.png
 
 # Minimum API level
-android.minapi = 21
-android.target = 30
+android.api = 33
+android.ndk = 25b
+android.sdk = 24
 
 # Package format (debug APK)
 android.packaging = gradle
