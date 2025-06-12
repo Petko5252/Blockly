@@ -13,8 +13,12 @@ import random
 # Set window size for desktop testing (optional)
 Window.size = (360, 640)
 
-# Load the KV file
-Builder.load_file('game.kv')
+# Load the KV file if it exists
+import os
+if os.path.exists('game.kv'):
+    Builder.load_file('game.kv')
+else:
+    print("Warning: 'game.kv' not found. Please ensure the KV file is present.")
 
 # Constants
 GRID_ROWS = 8
@@ -209,4 +213,6 @@ class BlockBlastApp(App):
 
 
 if __name__ == '__main__':
-    BlockBlastApp().run()
+    app = BlockBlastApp()
+    app.icon = 'Blockly.png'  # Link the app window icon here
+    app.run()
