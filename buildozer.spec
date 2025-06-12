@@ -12,7 +12,7 @@ jobs:
       KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
       KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,8 +21,8 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '11'  # or the version supported by your build
-      
+          java-version: '11'
+
       - name: Cache Buildozer global directory
         uses: actions/cache@v4
         with:
@@ -39,14 +39,18 @@ jobs:
         run: |
           wget https://github.com/google/bundletool/releases/download/1.15.0/bundletool-all.jar -O bundletool.jar
 
+      # ✅ Add this step: Recreate release.keystore from GitHub secret
+      - name: Recreate keystore file from base64
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+
       - name: Build AAB with Buildozer (release, unsigned)
         run: |
           buildozer android release
-          
+
       - name: Locate unsigned AAB
         id: find_aab
         run: |
-          # The unsigned AAB is usually under bin/
           AAB_PATH=$(find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/build/outputs/bundle/release -name "*.aab" | head -n1)
           echo "aab_path=$AAB_PATH" >> $GITHUB_OUTPUT
 
@@ -62,7 +66,7 @@ jobs:
         run: |
           jarsigner -verify -verbose -certs "${{ steps.find_aab.outputs.aab_path }}"
 
-      - name: Align and verify AAB (optional)
+      - name: Validate AAB using bundletool
         run: |
           java -jar bundletool.jar validate --bundle="${{ steps.find_aab.outputs.aab_path }}"
 
@@ -71,10 +75,3 @@ jobs:
         with:
           name: android-signed-aab
           path: ${{ steps.find_aab.outputs.aab_path }}
-
-      - name: Upload keystore (optional, only if you want)
-        if: false
-        uses: actions/upload-artifact@v4
-        with:
-          name: keystore
-          path: release.keystore
