@@ -1,41 +1,24 @@
 [app]
 
-# (str) Title of your application
-title = Blocly
-
-# (str) Package name
+title = Blockly
 package.name = blockly
-
-# (str) Package domain (reverse DNS)
 package.domain = com.petkodev.blockly
 
-# (str) Source code where the main.py lives
-source.dir = .
+version = 1.0
 
-# (list) Source files to include (let Buildozer detect)
+source.dir = .
 source.include_exts = py,png,kv,atlas,jpg,jpeg,ttf,otf,xml
 
-# (list) Application requirements
-# Include kivy and dependencies used for your game
 requirements = python3,kivy
 
-# (str) Supported architectures
 android.arch = armeabi-v7a, arm64-v8a
 
-# (str) Presplash image (splash screen)
-presplash.filename = %(source.dir)s/data/presplash.png
-
-# (str) Icon of the app
-icon.filename = Blockly.png
-
-# (str) Orientation (portrait, landscape or all)
 orientation = portrait
-
-# (bool) Indicate if the application should be fullscreen or not
 fullscreen = 1
 
-# (list) Permissions your app needs
 android.permissions = INTERNET
+
+# (list) Permissions your app needs
 
 # (bool) Copy libs inside APK instead of using system installed ones
 android.copy_libs = 1
