@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install dependencies and accept licenses
         run: |
           sudo apt update
           sudo apt install -y \
@@ -44,26 +44,27 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython
 
+          # Create config files to avoid SDK errors
+          mkdir -p ~/.android
+          touch ~/.android/repositories.cfg
+
+          # Download SDK and accept all licenses
+          buildozer android update
+          yes | sdkmanager --licenses || true
+
       - name: Check for buildozer.spec
         run: |
           if [ ! -f buildozer.spec ]; then
-            echo "❌ buildozer.spec not found"
+            echo "❌ buildozer.spec not found!"
             exit 1
           fi
 
-      - name: Build APK & AAB (capture full log)
+      - name: Build APK and AAB (capture log)
         run: |
           buildozer android clean 2>&1 | tee build.log
           buildozer android release aab 2>&1 | tee -a build.log
 
-      - name: Upload build logs (even if it fails)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
-
-      - name: Upload APK and AAB
+      - name: Upload APK & AAB artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -71,3 +72,10 @@ jobs:
           path: |
             bin/*.apk
             bin/*.aab
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
