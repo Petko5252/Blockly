@@ -1,361 +1,212 @@
-import pygame
+from kivy.app import App
+from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.button import Button
+from kivy.properties import NumericProperty
+from kivy.metrics import dp
+from kivy.core.window import Window
+from kivy.uix.widget import Widget
+from kivy.clock import Clock
+from kivy.lang import Builder
 import random
-import sys
 
-pygame.init()
+# Set window size for desktop testing (optional)
+Window.size = (360, 640)
+
+# Load the KV file
+Builder.load_file('game.kv')
 
 # Constants
-SCREEN_WIDTH, SCREEN_HEIGHT = 600, 750
-GRID_SIZE = 9
-CELL_SIZE = 55
-GRID_ORIGIN = (50, 100)
-FPS = 60
-DOCK_Y = GRID_ORIGIN[1] + GRID_SIZE * CELL_SIZE + 40  # Block spawn dock vertical pos
+GRID_ROWS = 8
+GRID_COLS = 8
+BLOCK_SIZE = dp(40)  # Size of one block (button)
 
-# Colors
-BG_COLOR_TOP = (20, 22, 25)
-BG_COLOR_BOTTOM = (40, 45, 50)
-GRID_BG_COLOR = (25, 30, 35)
-GRID_CELL_COLOR = (45, 60, 80)
-GRID_CELL_HIGHLIGHT = (120, 180, 255)
-BLOCK_COLOR = (0, 160, 240)
-BLOCK_COLOR_SHADOW = (0, 100, 160)
-TEXT_COLOR = (230, 230, 230)
-BUTTON_COLOR = (0, 140, 220)
-BUTTON_HOVER_COLOR = (0, 180, 255)
-
-# Fonts
-TITLE_FONT = pygame.font.SysFont('Segoe UI', 60, bold=True)
-font = pygame.font.SysFont('Segoe UI', 28, bold=True)
-small_font = pygame.font.SysFont('Segoe UI', 20)
-score_font = pygame.font.SysFont('Segoe UI', 24, bold=True)
-
-# Shapes: List of (x,y) relative positions in the block
-BLOCK_SHAPES = [
-    [(0, 0)],  # Single
-    [(0, 0), (1, 0)],  # Horizontal 2
-    [(0, 0), (0, 1)],  # Vertical 2
-    [(0, 0), (1, 0), (0, 1)],  # L shape
-    [(0, 0), (1, 0), (2, 0)],  # Horizontal 3
-    [(0, 0), (0, 1), (0, 2)],  # Vertical 3
+# Define colors for blocks (Kivy RGBA)
+COLORS = [
+    [0.9, 0.2, 0.2, 1],  # Red
+    [0.2, 0.8, 0.2, 1],  # Green
+    [0.2, 0.4, 0.8, 1],  # Blue
+    [0.9, 0.7, 0.2, 1],  # Yellow
+    [0.7, 0.2, 0.7, 1],  # Purple
 ]
 
-# Setup display
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Blockly - The Puzzle Block Game")
-clock = pygame.time.Clock()
 
-def draw_text(surface, text, pos, font_obj=font, center=False):
-    text_surface = font_obj.render(text, True, TEXT_COLOR)
-    if center:
-        rect = text_surface.get_rect(center=pos)
-        surface.blit(text_surface, rect)
-    else:
-        surface.blit(text_surface, pos)
+class Block(Button):
+    """A block in the game grid."""
+    color_index = NumericProperty(0)
 
-def draw_rounded_rect(surface, rect, color, radius=10):
-    """Draw rounded rectangle with shadow effect."""
-    shadow_color = (0, 0, 0, 50)
-    shadow_surf = pygame.Surface((rect.width + 6, rect.height + 6), pygame.SRCALPHA)
-    pygame.draw.rect(shadow_surf, shadow_color, shadow_surf.get_rect(), border_radius=radius)
-    surface.blit(shadow_surf, (rect.x + 3, rect.y + 3))
-    pygame.draw.rect(surface, color, rect, border_radius=radius)
+    def __init__(self, row, col, color_index, **kwargs):
+        super().__init__(**kwargs)
+        self.row = row
+        self.col = col
+        self.color_index = color_index
+        self.background_normal = ''
+        self.background_color = COLORS[self.color_index]
+        self.font_size = dp(0)  # hide text
+        self.border = (0, 0, 0, 0)
+        self.size_hint = (None, None)
+        self.size = (BLOCK_SIZE, BLOCK_SIZE)
 
-class Button:
-    def __init__(self, rect, text, callback):
-        self.rect = pygame.Rect(rect)
-        self.text = text
-        self.callback = callback
-        self.hovered = False
+    def blast(self):
+        """Hide this block by making it transparent or removing."""
+        self.background_color = [0, 0, 0, 0]
+        self.color_index = -1
+        self.disabled = True
 
-    def draw(self, surface):
-        color = BUTTON_HOVER_COLOR if self.hovered else BUTTON_COLOR
-        pygame.draw.rect(surface, color, self.rect, border_radius=12)
-        draw_text(surface, self.text, self.rect.center, font_obj=font, center=True)
 
-    def handle_event(self, event):
-        if event.type == pygame.MOUSEMOTION:
-            self.hovered = self.rect.collidepoint(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if self.hovered:
-                self.callback()
+class GameGrid(GridLayout):
+    """Grid layout that holds blocks."""
 
-class Block:
-    def __init__(self, shape, color):
-        self.shape = shape  # List of (x,y)
-        self.color = color
-        self.position = (0, 0)  # Top-left pixel pos on screen
-        self.grid_pos = None  # Grid coords (row, col) when placed
-        self.dragging = False
-        self.offset = (0, 0)  # Mouse offset
-
-    def draw(self, surface):
-        for (x, y) in self.shape:
-            rect = pygame.Rect(
-                self.position[0] + x * CELL_SIZE + 5,
-                self.position[1] + y * CELL_SIZE + 5,
-                CELL_SIZE - 10,
-                CELL_SIZE - 10,
-            )
-            # Draw shadow
-            shadow_rect = rect.copy()
-            shadow_rect.x += 3
-            shadow_rect.y += 3
-            pygame.draw.rect(surface, BLOCK_COLOR_SHADOW, shadow_rect, border_radius=8)
-
-            # Draw block
-            pygame.draw.rect(surface, self.color, rect, border_radius=8)
-
-    def get_cells(self):
-        if self.grid_pos is None:
-            return []
-        cells = []
-        for (x, y) in self.shape:
-            r = self.grid_pos[0] + y
-            c = self.grid_pos[1] + x
-            cells.append((r, c))
-        return cells
-
-class Game:
-    def __init__(self):
-        self.grid = [[None for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
+    def __init__(self, game_screen, **kwargs):
+        super().__init__(**kwargs)
+        self.cols = GRID_COLS
+        self.rows = GRID_ROWS
+        self.game_screen = game_screen
         self.blocks = []
-        self.selected_block = None
+        self.populate_grid()
+
+        # Set fixed size and remove size_hint to control centering and size
+        self.size_hint = (None, None)
+        self.size = (BLOCK_SIZE * GRID_COLS, BLOCK_SIZE * GRID_ROWS)
+
+    def populate_grid(self):
+        """Create blocks with random colors."""
+        self.blocks.clear()
+        self.clear_widgets()
+        for row in range(self.rows):
+            row_blocks = []
+            for col in range(self.cols):
+                color_idx = random.randint(0, len(COLORS) - 1)
+                block = Block(row, col, color_idx)
+                block.bind(on_release=self.on_block_press)
+                self.add_widget(block)
+                row_blocks.append(block)
+            self.blocks.append(row_blocks)
+
+    def on_block_press(self, block):
+        """Handle block press event."""
+        if block.color_index == -1:
+            # Already blasted
+            return
+        cluster = self.find_cluster(block.row, block.col, block.color_index)
+        if len(cluster) <= 1:
+            # Only blast clusters >= 2, else no blast
+            return
+        self.blast_cluster(cluster)
+        self.drop_blocks()
+        self.game_screen.update_score(len(cluster))
+
+    def find_cluster(self, row, col, color_index):
+        """Find all connected blocks of the same color."""
+        visited = set()
+        to_visit = [(row, col)]
+        cluster = []
+
+        while to_visit:
+            r, c = to_visit.pop()
+            if (r, c) in visited:
+                continue
+            visited.add((r, c))
+            block = self.blocks[r][c]
+            if block.color_index == color_index:
+                cluster.append(block)
+                # Check neighbors
+                neighbors = self.get_neighbors(r, c)
+                for nr, nc in neighbors:
+                    if (nr, nc) not in visited:
+                        to_visit.append((nr, nc))
+        return cluster
+
+    def get_neighbors(self, r, c):
+        """Return valid neighbors (up, down, left, right)."""
+        neighbors = []
+        if r > 0:
+            neighbors.append((r - 1, c))
+        if r < self.rows - 1:
+            neighbors.append((r + 1, c))
+        if c > 0:
+            neighbors.append((r, c - 1))
+        if c < self.cols - 1:
+            neighbors.append((r, c + 1))
+        return neighbors
+
+    def blast_cluster(self, cluster):
+        """Blast all blocks in cluster."""
+        for block in cluster:
+            block.blast()
+
+    def drop_blocks(self):
+        """Drop blocks down in columns and fill empty places from top."""
+        for col in range(self.cols):
+            # Extract blocks column by column
+            column_blocks = [self.blocks[row][col] for row in range(self.rows)]
+            # Filter out blasted blocks
+            alive_blocks = [b for b in column_blocks if b.color_index != -1]
+            num_blasted = self.rows - len(alive_blocks)
+            # Move alive blocks down by filling from bottom
+            for i in range(len(alive_blocks)):
+                block = alive_blocks[-1 - i]
+                dest_row = self.rows - 1 - i
+                if block.row != dest_row:
+                    self.move_block(block, dest_row, col)
+            # Replace blasted blocks on top with new random blocks
+            for i in range(num_blasted):
+                new_row = i
+                new_color_idx = random.randint(0, len(COLORS) - 1)
+                block = self.blocks[new_row][col]
+                block.color_index = new_color_idx
+                block.background_color = COLORS[new_color_idx]
+                block.disabled = False
+
+    def move_block(self, block, new_row, new_col):
+        """Move a block logically (without changing widget position)."""
+        # Swap block objects in self.blocks grid
+        dest_block = self.blocks[new_row][new_col]
+
+        # Swap properties instead of swapping widgets to keep same buttons
+        dest_block.color_index = block.color_index
+        dest_block.background_color = COLORS[block.color_index]
+        dest_block.disabled = block.disabled
+
+        # Blast the original block (because its info moved)
+        block.color_index = -1
+        block.background_color = [0, 0, 0, 0]
+        block.disabled = True
+
+    def reset_grid(self):
+        self.populate_grid()
+
+
+class HomeScreen(Screen):
+    pass
+
+
+class GameScreen(Screen):
+    score = NumericProperty(0)
+
+    def on_kv_post(self, base_widget):
+        # This is called after kv ids are ready; add the grid to grid_placeholder
+        self.grid = GameGrid(self)
+        self.ids.grid_placeholder.add_widget(self.grid)
+
+    def update_score(self, points):
+        self.score += points * (points - 1)
+        self.ids.score_label.text = f"Score: {self.score}"
+
+    def reset_game(self, *args):
         self.score = 0
-        self.spawn_blocks()
-        self.game_over = False
-
-    def spawn_blocks(self):
-        self.blocks = []
-        for i in range(3):
-            shape = random.choice(BLOCK_SHAPES)
-            block = Block(shape, BLOCK_COLOR)
-            # Position blocks at the bottom dock
-            block.position = (GRID_ORIGIN[0] + i * (CELL_SIZE * 3 + 20), DOCK_Y)
-            self.blocks.append(block)
-
-    def draw_background(self):
-        # Gradient background top to bottom
-        for y in range(SCREEN_HEIGHT):
-            ratio = y / SCREEN_HEIGHT
-            r = int(BG_COLOR_TOP[0] * (1 - ratio) + BG_COLOR_BOTTOM[0] * ratio)
-            g = int(BG_COLOR_TOP[1] * (1 - ratio) + BG_COLOR_BOTTOM[1] * ratio)
-            b = int(BG_COLOR_TOP[2] * (1 - ratio) + BG_COLOR_BOTTOM[2] * ratio)
-            pygame.draw.line(screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
-
-    def draw_grid(self):
-        # Grid background
-        rect = pygame.Rect(GRID_ORIGIN[0], GRID_ORIGIN[1], CELL_SIZE * GRID_SIZE, CELL_SIZE * GRID_SIZE)
-        pygame.draw.rect(screen, GRID_BG_COLOR, rect, border_radius=15)
-
-        # Cells
-        mouse_pos = pygame.mouse.get_pos()
-        highlight_cells = []
-        if self.selected_block and self.selected_block.dragging:
-            # Calculate grid position under mouse
-            gx = (mouse_pos[0] - GRID_ORIGIN[0]) // CELL_SIZE
-            gy = (mouse_pos[1] - GRID_ORIGIN[1]) // CELL_SIZE
-            if self.can_place(self.selected_block, (gy, gx)):
-                highlight_cells = [(gy + y, gx + x) for (x, y) in self.selected_block.shape]
-
-        for row in range(GRID_SIZE):
-            for col in range(GRID_SIZE):
-                cell_color = GRID_CELL_COLOR
-                rect = pygame.Rect(
-                    GRID_ORIGIN[0] + col * CELL_SIZE + 5,
-                    GRID_ORIGIN[1] + row * CELL_SIZE + 5,
-                    CELL_SIZE - 10,
-                    CELL_SIZE - 10,
-                )
-                if (row, col) in highlight_cells:
-                    cell_color = GRID_CELL_HIGHLIGHT
-                pygame.draw.rect(screen, cell_color, rect, border_radius=8)
-
-                if self.grid[row][col] is not None:
-                    # Draw placed block with shadow
-                    shadow_rect = rect.copy()
-                    shadow_rect.x += 3
-                    shadow_rect.y += 3
-                    pygame.draw.rect(screen, BLOCK_COLOR_SHADOW, shadow_rect, border_radius=8)
-                    pygame.draw.rect(screen, BLOCK_COLOR, rect, border_radius=8)
-
-    def can_place(self, block, grid_pos):
-        for (x, y) in block.shape:
-            r = grid_pos[0] + y
-            c = grid_pos[1] + x
-            if r < 0 or r >= GRID_SIZE or c < 0 or c >= GRID_SIZE:
-                return False
-            if self.grid[r][c] is not None:
-                return False
-        return True
-
-    def place_block(self, block, grid_pos):
-        if not self.can_place(block, grid_pos):
-            return False
-        for (x, y) in block.shape:
-            r = grid_pos[0] + y
-            c = grid_pos[1] + x
-            self.grid[r][c] = block.color
-        block.grid_pos = grid_pos
-        if block in self.blocks:
-            self.blocks.remove(block)
-        self.clear_lines()
-        if len(self.blocks) == 0:
-            self.spawn_blocks()
-        if not self.any_moves_left():
-            self.game_over = True
-        return True
-
-    def clear_lines(self):
-        full_rows = [r for r in range(GRID_SIZE) if all(self.grid[r][c] is not None for c in range(GRID_SIZE))]
-        full_cols = [c for c in range(GRID_SIZE) if all(self.grid[r][c] is not None for r in range(GRID_SIZE))]
-
-        cleared = 0
-
-        for r in full_rows:
-            for c in range(GRID_SIZE):
-                self.grid[r][c] = None
-            cleared += 1
-
-        for c in full_cols:
-            for r in range(GRID_SIZE):
-                self.grid[r][c] = None
-            cleared += 1
-
-        self.score += cleared * 10
-
-    def any_moves_left(self):
-        # Check if any block can be placed somewhere on grid
-        for block in self.blocks:
-            for r in range(GRID_SIZE):
-                for c in range(GRID_SIZE):
-                    if self.can_place(block, (r, c)):
-                        return True
-        return False
-
-    def draw_score(self):
-        # Score panel background
-        panel_rect = pygame.Rect(400, 20, 170, 60)
-        pygame.draw.rect(screen, GRID_BG_COLOR, panel_rect, border_radius=12)
-        draw_text(screen, f"Score:", (410, 25), font_obj=score_font)
-        draw_text(screen, f"{self.score}", (410, 50), font_obj=score_font)
-
-    def draw_game_over(self):
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
-        screen.blit(overlay, (0, 0))
-        draw_text(screen, "Game Over!", (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40), font_obj=TITLE_FONT, center=True)
-        draw_text(screen, f"Final Score: {self.score}", (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20), font_obj=font, center=True)
-        draw_text(screen, "Press ESC to return to Menu", (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 60), font_obj=small_font, center=True)
-
-    def run(self):
-        running = True
-        while running:
-            clock.tick(FPS)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE and self.game_over:
-                        return  # Return to menu
-
-                elif event.type == pygame.MOUSEBUTTONDOWN and not self.game_over:
-                    pos = pygame.mouse.get_pos()
-                    for block in self.blocks:
-                        bx, by = block.position
-                        width = max(x for x, _ in block.shape) + 1
-                        height = max(y for _, y in block.shape) + 1
-                        block_rect = pygame.Rect(bx, by, width * CELL_SIZE, height * CELL_SIZE)
-                        if block_rect.collidepoint(pos):
-                            block.dragging = True
-                            self.selected_block = block
-                            block.offset = (pos[0] - bx, pos[1] - by)
-                            break
-
-                elif event.type == pygame.MOUSEBUTTONUP and not self.game_over:
-                    if self.selected_block and self.selected_block.dragging:
-                        mx, my = pygame.mouse.get_pos()
-                        gx = (mx - GRID_ORIGIN[0]) // CELL_SIZE
-                        gy = (my - GRID_ORIGIN[1]) // CELL_SIZE
-                        if self.place_block(self.selected_block, (gy, gx)):
-                            self.selected_block.position = (0, 0)
-                            self.selected_block.grid_pos = (gy, gx)
-                        else:
-                            # Return to dock
-                            idx = self.blocks.index(self.selected_block) if self.selected_block in self.blocks else -1
-                            if idx == -1:
-                                self.selected_block.position = (-1000, -1000)  # Hide removed block
-                            else:
-                                self.selected_block.position = (GRID_ORIGIN[0] + idx * (CELL_SIZE * 3 + 20), DOCK_Y)
-
-                        self.selected_block.dragging = False
-                        self.selected_block = None
-
-                elif event.type == pygame.MOUSEMOTION and not self.game_over:
-                    if self.selected_block and self.selected_block.dragging:
-                        mx, my = pygame.mouse.get_pos()
-                        ox, oy = self.selected_block.offset
-                        self.selected_block.position = (mx - ox, my - oy)
-
-            self.draw_background()
-            self.draw_grid()
-            self.draw_score()
-
-            for block in self.blocks:
-                block.draw(screen)
-
-            if self.game_over:
-                self.draw_game_over()
-
-            pygame.display.flip()
-
-class MainMenu:
-    def __init__(self):
-        self.play_button = Button(rect=(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, 200, 60), text="Play", callback=self.start_game)
-        self.running = True
-        self.start_game_flag = False
-
-    def start_game(self):
-        self.start_game_flag = True
-
-    def draw_background(self):
-        for y in range(SCREEN_HEIGHT):
-            ratio = y / SCREEN_HEIGHT
-            r = int(BG_COLOR_TOP[0] * (1 - ratio) + BG_COLOR_BOTTOM[0] * ratio)
-            g = int(BG_COLOR_TOP[1] * (1 - ratio) + BG_COLOR_BOTTOM[1] * ratio)
-            b = int(BG_COLOR_TOP[2] * (1 - ratio) + BG_COLOR_BOTTOM[2] * ratio)
-            pygame.draw.line(screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
-
-    def run(self):
-        while self.running:
-            clock.tick(FPS)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-
-                self.play_button.handle_event(event)
-
-            self.draw_background()
-            # Draw title
-            draw_text(screen, "Blockly", (SCREEN_WIDTH // 2, 150), font_obj=TITLE_FONT, center=True)
-            draw_text(screen, "Drag blocks to fill the grid rows and columns", (SCREEN_WIDTH // 2, 220), font_obj=small_font, center=True)
-
-            self.play_button.draw(screen)
-
-            pygame.display.flip()
-
-            if self.start_game_flag:
-                self.running = False
+        self.ids.score_label.text = "Score: 0"
+        self.grid.reset_grid()
 
 
-def main():
-    menu = MainMenu()
-    menu.run()
-    game = Game()
-    game.run()
+class BlockBlastApp(App):
+    def build(self):
+        sm = ScreenManager(transition=FadeTransition())
+        sm.add_widget(HomeScreen(name='home'))
+        sm.add_widget(GameScreen(name='game'))
+        sm.current = 'home'  # Set default screen
+        return sm
 
-if __name__ == "__main__":
-    main()
+
+if __name__ == '__main__':
+    BlockBlastApp().run()
