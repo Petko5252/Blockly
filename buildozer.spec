@@ -1,77 +1,64 @@
-name: Build Android Signed AAB with Buildozer
+[app]Add commentMore actions
 
-on:
-  push:
-    branches: [ main ]
+title = Blockly
+package.name = blockly
+package.domain = com.petkodev.blockly
 
-jobs:
-  build:
-    runs-on: ubuntu-22.04
+version = 1.0
 
-    env:
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+source.dir = .
+source.include_exts = py,png,kv,atlas,jpg,jpeg,ttf,otf,xml
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+requirements = python3,kivy
 
-      - name: Set up Java environment
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '11'
+android.arch = armeabi-v7a, arm64-v8a
 
-      - name: Cache Buildozer global directory
-        uses: actions/cache@v4
-        with:
-          path: .buildozer_global
-          key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+orientation = portrait
+fullscreen = 1
 
-      - name: Cache .buildozer directory
-        uses: actions/cache@v4
-        with:
-          path: .buildozer
-          key: ${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+android.permissions = INTERNET
 
-      - name: Install bundletool
-        run: |
-          wget https://github.com/google/bundletool/releases/download/1.15.0/bundletool-all.jar -O bundletool.jar
+# (list) Permissions your app needs
 
-      # ✅ Add this step: Recreate release.keystore from GitHub secret
-      - name: Recreate keystore file from base64
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+# (bool) Copy libs inside APK instead of using system installed ones
+android.copy_libs = 1
 
-      - name: Build AAB with Buildozer (release, unsigned)
-        run: |
-          buildozer android release
+# (bool) Use SDL2 windowing backend (recommended)
+android.use_sdl2 = 1
 
-      - name: Locate unsigned AAB
-        id: find_aab
-        run: |
-          AAB_PATH=$(find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/build/outputs/bundle/release -name "*.aab" | head -n1)
-          echo "aab_path=$AAB_PATH" >> $GITHUB_OUTPUT
+# (int) Android API level (numeric)
+android.api = 33
 
-      - name: Sign AAB using jarsigner
-        run: |
-          jarsigner -verbose -keystore release.keystore \
-            -storepass $KEYSTORE_PASSWORD \
-            -keypass $KEY_PASSWORD \
-            "${{ steps.find_aab.outputs.aab_path }}" \
-            $KEY_ALIAS
+# (int) Minimum API your app supports
+android.minapi = 21
 
-      - name: Verify signing
-        run: |
-          jarsigner -verify -verbose -certs "${{ steps.find_aab.outputs.aab_path }}"
+# (int) Target API your app supports
+android.sdk = 33
 
-      - name: Validate AAB using bundletool
-        run: |
-          java -jar bundletool.jar validate --bundle="${{ steps.find_aab.outputs.aab_path }}"
+# (str) Android NDK version to use (automatic default)
+# android.ndk = 25b
 
-      - name: Upload signed AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-signed-aab
-          path: ${{ steps.find_aab.outputs.aab_path }}
+# (bool) Enable Android logcat (debugging)
+log_level = 2
+
+# (bool) Sign your APK automatically (for release, requires keystore)
+# android.release = 0
+
+# (str) Entry point of app (default 'main.py' with 'app' class)
+# You can leave as default if your main file is 'main.py'
+entrypoint = main.pyAdd commentMore actions
+
+
+[buildozer]
+
+# (str) Path to build artifact cache (default .buildozer)
+build_dir = .buildozer
+
+# (list) Buildozer commands to run before compilation
+# For cleaning before new build use: clean
+
+# (str) Log level (0=debug, 1=info, 2=warning)
+log_level = 2
+
+# (int) Number of concurrent build jobs
+num_jobs = 4
