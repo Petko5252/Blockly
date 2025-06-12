@@ -11,7 +11,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get Date
+      - name: Get current date
         id: get-date
         run: echo "date=$(date -u +%Y%m%d)" >> $GITHUB_OUTPUT
 
@@ -35,7 +35,7 @@ jobs:
           buildozer_version: stable
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: package
+          name: android-build
           path: ${{ steps.buildozer.outputs.filename }}
