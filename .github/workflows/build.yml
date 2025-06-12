@@ -1,83 +1,43 @@
-name: Build Kivy APK
+name: Android APK Build
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:  # Optional: allows manual runs
 
 jobs:
-  build-kivy:
+  build:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set Current Date
+        id: date
+        run: echo "date=$(date -u +'%Y%m%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Buildozer Global Directory
+        uses: actions/cache@v4
         with:
-          python-version: '3.10'
+          path: .buildozer_global
+          key: buildozer-global-${{ hashFiles('buildozer.spec') }}
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y \
-            build-essential \
-            ccache \
-            git \
-            libncurses5 \
-            libstdc++6 \
-            zlib1g-dev \
-            libffi-dev \
-            libssl-dev \
-            libsqlite3-dev \
-            libjpeg-dev \
-            libfreetype6-dev \
-            libpng-dev \
-            pkg-config \
-            openjdk-11-jdk \
-            unzip \
-            zip \
-            python3-pip
+      - name: Cache .buildozer Directory
+        uses: actions/cache@v4
+        with:
+          path: .buildozer
+          key: buildozer-${{ runner.os }}-${{ steps.date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
 
-          pip install --upgrade pip
-          pip install buildozer cython
+      - name: Build APK using Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          command: buildozer --log-level 2 android debug
+          buildozer_version: stable
 
-      - name: Set up Android SDK manually
-        run: |
-          mkdir -p "$HOME/android-sdk/cmdline-tools"
-          cd "$HOME/android-sdk/cmdline-tools"
-          curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip commandlinetools.zip
-          mv cmdline-tools latest
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
-          yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses
-          sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
-      - name: Build APK (capture log)
-        env:
-          ANDROIDSDK: $HOME/android-sdk
-          ANDROID_NDK_HOME: $HOME/.buildozer/android/platform/android-ndk-r25b
-          ANDROID_HOME: $HOME/android-sdk
-          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
-        run: |
-          mkdir -p ~/.android
-          touch ~/.android/repositories.cfg
-          buildozer android clean 2>&1 | tee build.log
-          buildozer android release apk 2>&1 | tee -a build.log
-
-      - name: Upload APK artifact
-        if: success()
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Android-APK
-          path: bin/*.apk
-
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
+          name: android-apk
+          path: ${{ steps.buildozer.outputs.filename }}
