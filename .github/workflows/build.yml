@@ -51,7 +51,7 @@ jobs:
           buildozer android release aab
 
       - name: Upload APK and AAB
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Android-builds
           path: |
