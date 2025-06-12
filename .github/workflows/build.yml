@@ -44,13 +44,22 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython
 
+      - name: Check for buildozer.spec
+        run: |
+          if [ ! -f buildozer.spec ]; then
+            echo "❌ buildozer.spec not found. Did you forget to commit it?"
+            exit 1
+          fi
+
       - name: Build APK and AAB
         run: |
-          cd $GITHUB_WORKSPACE
           buildozer android clean
           buildozer android release aab
+        env:
+          BUILDOZER_WARN_ON_ROOT: 1
 
       - name: Upload APK and AAB
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Android-builds
