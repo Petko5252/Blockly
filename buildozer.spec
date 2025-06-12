@@ -2,6 +2,7 @@
 title = Blockly
 package.name = blockly
 package.domain = com.petkodev.blockly
+icon.filename = Blockly.png  # <-- make sure the file exists
 
 version = 1.0
 
