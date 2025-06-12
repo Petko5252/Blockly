@@ -37,7 +37,7 @@ jobs:
 
       - name: Install bundletool (v1.18.1)
         run: |
-          wget https://github.com/google/bundletool/releases/tag/1.18.1
+          wget https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
       - name: Recreate keystore file from base64
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
