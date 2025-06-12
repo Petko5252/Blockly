@@ -1,4 +1,4 @@
-name: Build Kivy APK & AAB
+name: Build Kivy APK
 
 on:
   push:
@@ -56,7 +56,7 @@ jobs:
           yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses
           sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      - name: Build APK and AAB (capture log)
+      - name: Build APK (capture log)
         env:
           ANDROIDSDK: $HOME/android-sdk
           ANDROID_NDK_HOME: $HOME/.buildozer/android/platform/android-ndk-r25b
@@ -66,16 +66,14 @@ jobs:
           mkdir -p ~/.android
           touch ~/.android/repositories.cfg
           buildozer android clean 2>&1 | tee build.log
-          buildozer android release aab 2>&1 | tee -a build.log
+          buildozer android release apk 2>&1 | tee -a build.log
 
-      - name: Upload APK & AAB artifacts
+      - name: Upload APK artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Android-builds
-          path: |
-            bin/*.apk
-            bin/*.aab
+          name: Android-APK
+          path: bin/*.apk
 
       - name: Upload build log
         if: always()
