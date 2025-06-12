@@ -1,0 +1,102 @@
+#:import dp kivy.metrics.dp
+
+<StyledButton@Button>:
+    font_size: '18sp'
+    bold: True
+    background_normal: ''
+    background_color: 0.18, 0.6, 0.86, 1
+    color: 1, 1, 1, 1
+    size_hint: None, None
+    size: dp(150), dp(50)
+    halign: 'center'
+    valign: 'middle'
+
+<HomeScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(20)
+
+        Widget:
+            size_hint_y: 0.1
+
+        Image:
+            source: 'Blockly.png'   # Put your logo image file here
+            size_hint: None, None
+            size: dp(120), dp(120)
+            allow_stretch: True
+            keep_ratio: True
+            pos_hint: {"center_x": 0.5}
+
+        Label:
+            text: '[b][color=#304FFE]Block Blast[/color][/b]'
+            markup: True
+            font_size: '40sp'
+            size_hint_y: 0.3
+            halign: 'center'
+            valign: 'middle'
+
+        Widget:
+            size_hint_y: 0.2
+
+        StyledButton:
+            text: 'START GAME'
+            size_hint_x: None
+            width: dp(200)
+            pos_hint: {"center_x": 0.5}
+            on_release:
+                root.manager.current = 'game'
+
+        Widget:
+            size_hint_y: 0.1
+
+        Label:
+            text: 'Developed with Kivy'
+            size_hint_y: 0.1
+            font_size: '14sp'
+            color: 0.5, 0.5, 0.5, 1
+            halign: 'center' 
+            valign: 'middle'
+
+<GameScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(10)
+        spacing: dp(10)
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(50)
+            padding: dp(10), 0
+
+            Label:
+                id: score_label
+                text: "Score: 0"
+                font_size: '18sp'
+                bold: True
+                color: 0.2, 0.2, 0.2, 1
+                halign: 'left'
+                valign: 'middle'
+
+            Button:
+                text: "Reset"
+                size_hint: None, None
+                size: dp(80), dp(40)
+                background_normal: ''
+                background_color: 0.9, 0.2, 0.2, 1
+                color: 1, 1, 1, 1
+                on_release: root.reset_game()
+
+        AnchorLayout:
+            id: grid_placeholder
+            size_hint_y: 1
+            size_hint_x: 1
+
+        Button:
+            text: 'Back to Menu'
+            size_hint_y: None
+            height: dp(50)
+            background_normal: ''
+            background_color: 0.6, 0.6, 0.6, 1
+            on_release:
+                root.manager.current = 'home'
