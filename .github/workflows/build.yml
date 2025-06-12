@@ -1,4 +1,4 @@
-name: Build Android APK with Buildozer
+name: Build Android Signed AAB with Buildozer
 
 on:
   push:
@@ -8,13 +8,20 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get current date
-        id: get-date
-        run: echo "date=$(date -u '+%Y%m%d')" >> "$GITHUB_OUTPUT"
+      - name: Set up Java environment
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
 
       - name: Cache Buildozer global directory
         uses: actions/cache@v4
@@ -26,17 +33,45 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
+          key: ${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
-      - name: Build APK with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
-        with:
-          command: buildozer -v android debug
-          buildozer_version: stable
+      - name: Install bundletool
+        run: |
+          wget https://github.com/google/bundletool/releases/download/1.15.0/bundletool-all.jar -O bundletool.jar
 
-      - name: Upload APK
+      # ✅ Add this step: Recreate release.keystore from GitHub secret
+      - name: Recreate keystore file from base64
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+
+      - name: Build AAB with Buildozer (release, unsigned)
+        run: |
+          buildozer android release
+
+      - name: Locate unsigned AAB
+        id: find_aab
+        run: |
+          AAB_PATH=$(find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/build/outputs/bundle/release -name "*.aab" | head -n1)
+          echo "aab_path=$AAB_PATH" >> $GITHUB_OUTPUT
+
+      - name: Sign AAB using jarsigner
+        run: |
+          jarsigner -verbose -keystore release.keystore \
+            -storepass $KEYSTORE_PASSWORD \
+            -keypass $KEY_PASSWORD \
+            "${{ steps.find_aab.outputs.aab_path }}" \
+            $KEY_ALIAS
+
+      - name: Verify signing
+        run: |
+          jarsigner -verify -verbose -certs "${{ steps.find_aab.outputs.aab_path }}"
+
+      - name: Validate AAB using bundletool
+        run: |
+          java -jar bundletool.jar validate --bundle="${{ steps.find_aab.outputs.aab_path }}"
+
+      - name: Upload signed AAB
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
-          path: ${{ steps.buildozer.outputs.filename }}
+          name: android-signed-aab
+          path: ${{ steps.find_aab.outputs.aab_path }}
