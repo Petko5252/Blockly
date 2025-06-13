@@ -1,68 +1,33 @@
-#:import dp kivy.metrics.dp
-
-Image:
-    source: 'Blockly.png'   # Your logo image file linked here
-
-<StyledButton@Button>:
-    font_size: '18sp'
-    bold: True
-    background_normal: ''
-    background_color: 0.18, 0.6, 0.86, 1
-    color: 1, 1, 1, 1
-    size_hint: None, None
-    size: dp(150), dp(50)
-    halign: 'center'
-    valign: 'middle'
-
 <HomeScreen>:
     BoxLayout:
         orientation: 'vertical'
         padding: dp(20)
         spacing: dp(20)
 
-        Widget:
-            size_hint_y: 0.1
-
         Image:
-            source: 'Blockly.png'   # Put your logo image file here
-            size_hint: None, None
-            size: dp(120), dp(120)
+            source: "Blockly.png"
+            size_hint_y: 0.5
             allow_stretch: True
-            keep_ratio: True
-            pos_hint: {"center_x": 0.5}
 
         Label:
-            text: '[b][color=#304FFE]Block Blast[/color][/b]'
-            markup: True
-            font_size: '40sp'
-            size_hint_y: 0.3
-            halign: 'center'
-            valign: 'middle'
+            text: "Blockly"
+            font_size: '32sp'
+            bold: True
+            color: 0.1, 0.1, 0.1, 1
 
-        Widget:
-            size_hint_y: 0.2
-
-        StyledButton:
-            text: 'START GAME'
-            size_hint_x: None
-            width: dp(200)
+        Button:
+            text: "Start Game"
+            size_hint: None, None
+            size: dp(200), dp(50)
             pos_hint: {"center_x": 0.5}
+            background_normal: ''
+            background_color: 0.3, 0.6, 1, 1
+            color: 1, 1, 1, 1
             on_release:
-                root.manager.current = 'game'
-
-        Widget:
-            size_hint_y: 0.1
-
-        Label:
-            text: 'Developed with Kivy'
-            size_hint_y: 0.1
-            font_size: '14sp'
-            color: 0.5, 0.5, 0.5, 1
-            halign: 'center' 
-            valign: 'middle'
+                app.root.current = 'game'
 
 <GameScreen>:
-       BoxLayout:
+    BoxLayout:
         orientation: 'vertical'
         padding: dp(10)
         spacing: dp(10)
@@ -90,5 +55,16 @@ Image:
                 color: 1, 1, 1, 1
                 on_release: root.reset_game()
 
+            Button:
+                text: "Back"
+                size_hint: None, None
+                size: dp(80), dp(40)
+                background_color: 0.3, 0.3, 0.3, 1
+                on_release:
+                    app.root.current = 'home'
+
         AnchorLayout:
+            id: grid_placeholder
+            anchor_x: 'center'
+            anchor_y: 'center'
             size_hint: 1, 1
