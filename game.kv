@@ -1,5 +1,8 @@
 #:import dp kivy.metrics.dp
 
+Image:
+    source: 'Blockly.png'   # Your logo image file linked here
+
 <StyledButton@Button>:
     font_size: '18sp'
     bold: True
@@ -59,7 +62,7 @@
             valign: 'middle'
 
 <GameScreen>:
-    BoxLayout:
+       BoxLayout:
         orientation: 'vertical'
         padding: dp(10)
         spacing: dp(10)
@@ -88,15 +91,4 @@
                 on_release: root.reset_game()
 
         AnchorLayout:
-            id: grid_placeholder
-            size_hint_y: 1
-            size_hint_x: 1
-
-        Button:
-            text: 'Back to Menu'
-            size_hint_y: None
-            height: dp(50)
-            background_normal: ''
-            background_color: 0.6, 0.6, 0.6, 1
-            on_release:
-                root.manager.current = 'home'
+            size_hint: 1, 1
